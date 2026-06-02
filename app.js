@@ -8,19 +8,22 @@
 
 const STORAGE_KEY = "kakutei-senior.v1";
 
-// 年金は種類を調べなくてよいよう、枠を用意（足りなければ年金5・6へ）
+// 収入：年金／働きながらの収入／その他
 const INCOME_TYPES = [
+  { id: "salary", label: "給料・賃金", group: "work" },
+  { id: "parttime", label: "アルバイト・パート", group: "work" },
   { id: "kokumin", label: "国民年金", group: "pension" },
   { id: "kosei", label: "厚生年金", group: "pension" },
   { id: "pension3", label: "年金3", group: "pension" },
   { id: "pension4", label: "年金4", group: "pension" },
   { id: "pension5", label: "年金5", group: "pension" },
   { id: "pension6", label: "年金6", group: "pension" },
-  { id: "parttime", label: "アルバイト・パート", group: "other" },
   { id: "other", label: "その他の収入", group: "other" }
 ];
 
 const PENSION_TYPE_IDS = INCOME_TYPES.filter((t) => t.group === "pension").map((t) => t.id);
+const WORK_TYPE_IDS = INCOME_TYPES.filter((t) => t.group === "work").map((t) => t.id);
+const OTHER_INCOME_IDS = INCOME_TYPES.filter((t) => t.group === "other").map((t) => t.id);
 
 const EXPENSE_TYPES = [
   { id: "lifeins", label: "生命保険・介護保険" },
@@ -32,6 +35,7 @@ const EXPENSE_TYPES = [
 ];
 
 const CHECKLIST = [
+  { id: "gensen", text: "給与の源泉徴収票", desc: "働いている人・アルバイトの人。会社・店から届く" },
   { id: "hoken", text: "健康保険・介護保険の控除証明", desc: "市役所や保険者から届く書類" },
   { id: "nenkin", text: "年金の源泉徴収票など", desc: "届いた書類ごとに、国民年金・厚生年金・年金3〜6へ記録したメモと照合" },
   { id: "iryou", text: "医療費の領収書・明細", desc: "このアプリの記録と照合" },
@@ -129,6 +133,12 @@ function sumPension() {
     .reduce((a, r) => a + Number(r.amount || 0), 0);
 }
 
+function sumWork() {
+  return state.income
+    .filter((r) => WORK_TYPE_IDS.includes(r.type))
+    .reduce((a, r) => a + Number(r.amount || 0), 0);
+}
+
 function expenseTypeLabel(id) {
   return (EXPENSE_TYPES.find((t) => t.id === id) || {}).label || id;
 }
@@ -188,7 +198,7 @@ function renderHome() {
       <ol style="font-size:18px;padding-left:1.4em;margin:10px 0 0">
         <li><strong>医療費</strong> … 病院・薬局の支出</li>
         <li><strong>経費</strong> … 保険料・寄付・仕事の経費</li>
-        <li><strong>収入</strong> … 国民年金・厚生年金・年金3〜6など</li>
+        <li><strong>収入</strong> … 給料・アルバイト、年金（国民・厚生・年金3〜6）</li>
         <li><strong>まとめ</strong> … 申告用の数字を確認</li>
         <li><strong>準備</strong> … 必要な書類をチェック</li>
       </ol>
@@ -366,16 +376,21 @@ function renderIncome() {
   const items = [...state.income].sort((a, b) => b.date.localeCompare(a.date));
   const pensionOpts = INCOME_TYPES.filter((t) => t.group === "pension")
     .map((t) => `<option value="${t.id}">${t.label}</option>`).join("");
+  const workOpts = INCOME_TYPES.filter((t) => t.group === "work")
+    .map((t) => `<option value="${t.id}">${t.label}</option>`).join("");
   const otherOpts = INCOME_TYPES.filter((t) => t.group === "other")
     .map((t) => `<option value="${t.id}">${t.label}</option>`).join("");
   main.innerHTML = `
     <h2 class="page-title">収入の記録</h2>
-    <p class="hint">年金の種類が分からなくても大丈夫。届いた書類ごとに「国民年金」「厚生年金」「年金3」…へ記録してください。</p>
+    <p class="hint">働いている方は「給料・賃金」か「アルバイト」へ。年金をもらっている方は、届いた書類ごとに年金の枠へ記録してください。</p>
     <div class="card">
       <form id="incForm">
         <div class="form-group">
           <label for="incType">種類</label>
           <select id="incType" required>
+            <optgroup label="お給料（働いている人）">
+              ${workOpts}
+            </optgroup>
             <optgroup label="年金（複数あれば年金3〜6も使う）">
               ${pensionOpts}
             </optgroup>
@@ -394,7 +409,7 @@ function renderIncome() {
         </div>
         <div class="form-group">
           <label for="incMemo">メモ（任意）</label>
-          <input type="text" id="incMemo" placeholder="例：〇月分、企業年金、共済年金など" />
+          <input type="text" id="incMemo" placeholder="例：〇月分、〇〇店、企業年金など" />
         </div>
         <button type="submit" class="btn btn-primary">＋ 追加する</button>
       </form>
@@ -415,13 +430,18 @@ function renderIncome() {
         `).join("")}
       ${items.length > 0 ? `
         <div style="margin-top:14px;font-size:18px">
+          ${WORK_TYPE_IDS.map((id) => {
+            const s = sumIncome(id);
+            return s > 0 ? `<div>${incomeTypeLabel(id)}：${fmtYen(s)}</div>` : "";
+          }).join("")}
+          ${sumWork() > 0 ? `<div style="font-weight:800">お給料 小計：${fmtYen(sumWork())}</div>` : ""}
           ${PENSION_TYPE_IDS.map((id) => {
             const s = sumIncome(id);
             return s > 0 ? `<div>${incomeTypeLabel(id)}：${fmtYen(s)}</div>` : "";
           }).join("")}
           ${sumIncome("pension") > 0 ? `<div>${incomeTypeLabel("pension")}：${fmtYen(sumIncome("pension"))}</div>` : ""}
           ${sumPension() > 0 ? `<div style="font-weight:800">年金 小計：${fmtYen(sumPension())}</div>` : ""}
-          ${["parttime", "other"].map((id) => {
+          ${OTHER_INCOME_IDS.map((id) => {
             const s = sumIncome(id);
             return s > 0 ? `<div>${incomeTypeLabel(id)}：${fmtYen(s)}</div>` : "";
           }).join("")}
@@ -462,14 +482,20 @@ function renderSummary() {
     <p class="hint">確定申告の準備用です。正式な申告は税務署・e-Tax等で行ってください。</p>
     <div class="card">
       <h3 style="font-size:22px;margin:0 0 12px">💴 収入</h3>
-      <p style="font-size:16px;color:var(--muted);margin:0 0 10px">年金（国民・厚生・年金3〜6）</p>
+      <p style="font-size:16px;color:var(--muted);margin:0 0 10px">お給料（働いている人）</p>
+      ${WORK_TYPE_IDS.map((id) => {
+        const s = sumIncome(id);
+        return s > 0 ? `<div class="summary-row"><span>${incomeTypeLabel(id)}</span><span>${fmtYen(s)}</span></div>` : "";
+      }).join("")}
+      ${sumWork() > 0 ? `<div class="summary-row" style="font-weight:800"><span>お給料 小計</span><span>${fmtYen(sumWork())}</span></div>` : ""}
+      <p style="font-size:16px;color:var(--muted);margin:16px 0 10px">年金</p>
       ${PENSION_TYPE_IDS.map((id) => {
         const s = sumIncome(id);
         return s > 0 ? `<div class="summary-row"><span>${incomeTypeLabel(id)}</span><span>${fmtYen(s)}</span></div>` : "";
       }).join("")}
       ${sumIncome("pension") > 0 ? `<div class="summary-row"><span>${incomeTypeLabel("pension")}</span><span>${fmtYen(sumIncome("pension"))}</span></div>` : ""}
       ${sumPension() > 0 ? `<div class="summary-row" style="font-weight:800"><span>年金 小計</span><span>${fmtYen(sumPension())}</span></div>` : ""}
-      ${["parttime", "other"].map((id) => {
+      ${OTHER_INCOME_IDS.map((id) => {
         const s = sumIncome(id);
         return s > 0 ? `<div class="summary-row"><span>${incomeTypeLabel(id)}</span><span>${fmtYen(s)}</span></div>` : "";
       }).join("")}
@@ -499,7 +525,7 @@ function renderSummary() {
     <div class="card">
       <h3 style="font-size:22px;margin:0 0 12px">📝 申告時に使うメモ</h3>
       <p style="font-size:18px;margin:0;line-height:1.8">
-        ・年金の「源泉徴収票」等の正式な数字を優先<br>
+        ・給与の「源泉徴収票」、年金の通知など<strong>正式な書類</strong>の数字を優先<br>
         ・このアプリは<strong>日々のメモ</strong>です<br>
         ・分からないことは税務署（<strong>#3110</strong>）や家族に相談
       </p>
