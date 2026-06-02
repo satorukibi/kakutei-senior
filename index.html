@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a365d" />
+  <title>申告準備ノート（高齢者向け）</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="header">
+    <h1>申告準備ノート</h1>
+    <p class="header-sub">収入・医療費・経費を記録して、確定申告の準備を</p>
+    <div class="year-row">
+      <label for="yearSelect">対象年</label>
+      <select id="yearSelect" aria-label="対象年"></select>
+    </div>
+  </header>
+
+  <main id="main" class="main"></main>
+
+  <nav class="nav" aria-label="メインメニュー">
+    <button class="nav-btn active" data-page="home">🏠<span>ホーム</span></button>
+    <button class="nav-btn" data-page="medical">💊<span>医療費</span></button>
+    <button class="nav-btn" data-page="expense">📝<span>経費</span></button>
+    <button class="nav-btn" data-page="income">💴<span>収入</span></button>
+    <button class="nav-btn" data-page="summary">📋<span>まとめ</span></button>
+    <button class="nav-btn" data-page="checklist">✅<span>準備</span></button>
+  </nav>
+
+  <footer class="footer">
+    ※ 税務相談の代わりにはなりません。最終確認は税務署・税理士へ。
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
